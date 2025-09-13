@@ -51,6 +51,8 @@ class ConfigUtilCustomTest(unittest.TestCase):
 	
 	#@unittest.skip("Ignore for now.")
 	def testGetCredentials(self):
+		# Add these debug lines
+		# credFileName = self.configUtil.getProperty(ConfigConst.CONSTRAINED_DEVICE, ConfigConst.CRED_FILE_KEY)
 		creds = self.configUtil.getCredentials(ConfigConst.CONSTRAINED_DEVICE)
 		self.assertIsNotNone(creds)
 		self.assertEqual(creds[ConfigConst.USER_NAME_TOKEN_KEY], self.DEFAULT_USER)

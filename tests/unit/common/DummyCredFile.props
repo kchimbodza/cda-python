@@ -1,5 +1,2 @@
-#
-# Dummy cred file for unit testing only
-#
-userToken = Foo
-authToken = Bar
+userToken=Foo
+authToken=Bar
