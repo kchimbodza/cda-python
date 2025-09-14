@@ -13,11 +13,13 @@
 import argparse
 import logging
 import traceback
+
 from time import sleep
 
 import programmingtheiot.common.ConfigConst as ConfigConst
+
 from programmingtheiot.common.ConfigUtil import ConfigUtil
-from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
+
 
 logging.basicConfig(format = '%(asctime)s:%(name)s:%(levelname)s:%(message)s', level = logging.DEBUG)
 
@@ -35,8 +37,7 @@ class ConstrainedDeviceApp():
 		"""
 		logging.info("Initializing CDA...")
 		
-		# Create SystemPerformanceManager instance
-		self.sysPerfManager = SystemPerformanceManager()
+		# TODO: implementation here
 		
 		self.isStarted = False
 
@@ -52,9 +53,7 @@ class ConstrainedDeviceApp():
 		"""
 		logging.info("Starting CDA...")
 		
-		# Start the SystemPerformanceManager
-		self.sysPerfManager.startManager()
-		self.isStarted = True
+		# TODO: implementation here
 		
 		logging.info("CDA started.")
 
@@ -65,9 +64,7 @@ class ConstrainedDeviceApp():
 		"""
 		logging.info("CDA stopping...")
 		
-		# Stop the SystemPerformanceManager
-		self.sysPerfManager.stopManager()
-		self.isStarted = False
+		# TODO: implementation here
 		
 		logging.info("CDA stopped with exit code %s.", str(code))
 		
@@ -81,31 +78,31 @@ def main():
 		description = 'CDA used for generating telemetry - Programming the IoT.')
 	
 	argParser.add_argument('-c', '--configFile', help = 'Optional custom configuration file for the CDA.')
-	
+
 	configFile = None
-	
+
 	try:
 		args = argParser.parse_args()
 		configFile = args.configFile
+
 		logging.info('Parsed configuration file arg: %s', configFile)
 	except:
 		logging.info('No arguments to parse.')
-	
+
 	# init ConfigUtil
 	configUtil = ConfigUtil(configFile)
-	
 	cda = None
-	
+
 	try:
 		# init CDA
 		cda = ConstrainedDeviceApp()
-		
+
 		# start CDA
 		cda.startApp()
-		
+
 		# check if CDA should run forever
 		runForever = configUtil.getBoolean(ConfigConst.CONSTRAINED_DEVICE, ConfigConst.RUN_FOREVER_KEY)
-		
+
 		if runForever:
 			# sleep ~5 seconds every loop
 			while (True):
@@ -119,16 +116,19 @@ def main():
 			
 	except KeyboardInterrupt:
 		logging.warning('Keyboard interruption for CDA. Exiting.')
+
 		if (cda):
 			cda.stopApp(-1)
+
 	except Exception as e:
 		# handle any uncaught exception that may be thrown
 		# during CDA initialization
 		logging.error('Startup exception caused CDA to fail. Exiting.')
 		traceback.print_exception(type(e), e, e.__traceback__)
+
 		if (cda):
 			cda.stopApp(-2)
-	
+
 	# unnecessary
 	logging.info('Exiting CDA.')
 	exit()
