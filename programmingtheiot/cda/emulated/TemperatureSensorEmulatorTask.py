@@ -10,10 +10,10 @@
 # Programming the Internet of Things project.
 # 
 
+import logging
+
 from programmingtheiot.data.SensorData import SensorData
-
 import programmingtheiot.common.ConfigConst as ConfigConst
-
 from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.cda.sim.BaseSensorSimTask import BaseSensorSimTask
 
@@ -21,12 +21,45 @@ from pisense import SenseHAT
 
 class TemperatureSensorEmulatorTask(BaseSensorSimTask):
 	"""
-	Shell representation of class for student implementation.
+	This is a simple wrapper for the Sense HAT's temperature sensor
+	emulator. It will read the current temperature from the emulated
+	Sense HAT and return it as a SensorData instance.
 	
 	"""
 
 	def __init__(self, dataSet = None):
-		pass
+		super(TemperatureSensorEmulatorTask, self).__init__(
+			name = ConfigConst.TEMP_SENSOR_NAME, 
+			typeID = ConfigConst.TEMP_SENSOR_TYPE,
+			dataSet = dataSet)
+		
+		# Load the enableEmulator configuration setting
+		configUtil = ConfigUtil()
+		enableEmulation = configUtil.getBoolean(
+			ConfigConst.CONSTRAINED_DEVICE, 
+			ConfigConst.ENABLE_EMULATOR_KEY)
+		
+		# Initialize SenseHAT instance - set emulate to True for emulator mode
+		self.sh = SenseHAT(emulate = enableEmulation)
+		
+		logging.info("Temperature sensor emulator task initialized with emulation = " + str(enableEmulation))
 	
 	def generateTelemetry(self) -> SensorData:
-		pass
+		"""
+		Generates the telemetry data using the SenseHAT emulator.
+		
+		Returns:
+			SensorData: The sensor data with temperature reading.
+		"""
+		sensorData = SensorData(name = self.getName(), typeID = self.getTypeID())
+		sensorVal = self.sh.environ.temperature
+		
+		# Set the sensor value
+		sensorData.setValue(sensorVal)
+		
+		# Update the time stamp to current time
+		self.latestSensorData = sensorData
+		
+		logging.debug("Temperature sensor emulator generated data: " + str(sensorVal))
+		
+		return sensorData

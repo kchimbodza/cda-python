@@ -11,11 +11,9 @@
 # 
 
 import logging
-
 from time import sleep
 
 import programmingtheiot.common.ConfigConst as ConfigConst
-
 from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.cda.sim.BaseActuatorSimTask import BaseActuatorSimTask
 
@@ -23,16 +21,68 @@ from pisense import SenseHAT
 
 class HumidifierEmulatorTask(BaseActuatorSimTask):
 	"""
-	Shell representation of class for student implementation.
+	This is a simple wrapper for an actuator abstraction that will
+	activate and deactivate a simulated humidifier. It will use the
+	SenseHAT emulator's LED display to show the state.
 	
 	"""
 
 	def __init__(self):
-		pass
-
-	def _activateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		pass
-
-	def _deactivateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		pass
+		super(HumidifierEmulatorTask, self).__init__(
+			name = ConfigConst.HUMIDIFIER_ACTUATOR_NAME, 
+			typeID = ConfigConst.HUMIDIFIER_ACTUATOR_TYPE,
+			simpleName = "HUMIDIFIER")
+		
+		# Load the enableEmulator configuration setting
+		configUtil = ConfigUtil()
+		enableEmulation = configUtil.getBoolean(
+			ConfigConst.CONSTRAINED_DEVICE, 
+			ConfigConst.ENABLE_EMULATOR_KEY)
+		
+		# Initialize SenseHAT instance - set emulate to True for emulator mode
+		self.sh = SenseHAT(emulate = enableEmulation)
+		
+		logging.info("Humidifier emulator task initialized with emulation = " + str(enableEmulation))
 	
+	def _activateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
+		"""
+		Activates the humidifier by displaying a message on the SenseHAT LED screen.
+		
+		Args:
+			val: The target humidity value
+			stateData: Optional state data
+			
+		Returns:
+			int: 0 on success, -1 on failure
+		"""
+		if self.sh.screen:
+			msg = self.getSimpleName() + ' ON: ' + str(val) + '%'
+			self.sh.screen.scroll_text(msg)
+			logging.info("Humidifier activated with target humidity: " + str(val))
+			return 0
+		else:
+			logging.warning("No SenseHAT LED screen instance to write.")
+			return -1
+	
+	def _deactivateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
+		"""
+		Deactivates the humidifier by displaying an OFF message and clearing the screen.
+		
+		Args:
+			val: The current humidity value
+			stateData: Optional state data
+			
+		Returns:
+			int: 0 on success, -1 on failure
+		"""
+		if self.sh.screen:
+			msg = self.getSimpleName() + ' OFF'
+			self.sh.screen.scroll_text(msg)
+			# Optional sleep (5 seconds) for message to scroll before clearing display
+			sleep(5)
+			self.sh.screen.clear()
+			logging.info("Humidifier deactivated")
+			return 0
+		else:
+			logging.warning("No SenseHAT LED screen instance to clear / close.")
+			return -1
