@@ -9,6 +9,7 @@
 
 import logging
 import unittest
+from time import sleep
 
 from programmingtheiot.cda.app.ConstrainedDeviceApp import ConstrainedDeviceApp
 
@@ -46,6 +47,7 @@ class ConstrainedDeviceAppTest(unittest.TestCase):
 
 	def testRunConstrainedDeviceApp(self):
 		self.cda.startApp()
+		sleep(65)
 		self.cda.stopApp(0)
 
 if __name__ == "__main__":
