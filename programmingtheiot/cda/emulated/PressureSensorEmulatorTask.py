@@ -45,21 +45,7 @@ class PressureSensorEmulatorTask(BaseSensorSimTask):
 		logging.info("Pressure sensor emulator task initialized with emulation = " + str(enableEmulation))
 	
 	def generateTelemetry(self) -> SensorData:
-		"""
-		Generates the telemetry data using the SenseHAT emulator.
-		
-		Returns:
-			SensorData: The sensor data with pressure reading.
-		"""
-		sensorData = SensorData(name = self.getName(), typeID = self.getTypeID())
+		self.latestSensorData = SensorData(typeID=self.typeID, name=self.name)
 		sensorVal = self.sh.environ.pressure
-		
-		# Set the sensor value
-		sensorData.setValue(sensorVal)
-		
-		# Update the time stamp to current time
-		self.latestSensorData = sensorData
-		
-		logging.debug("Pressure sensor emulator generated data: " + str(sensorVal))
-		
-		return sensorData
+		self.latestSensorData.setValue(sensorVal)
+		return self.latestSensorData

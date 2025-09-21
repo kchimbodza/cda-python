@@ -45,21 +45,7 @@ class HumiditySensorEmulatorTask(BaseSensorSimTask):
 		logging.info("Humidity sensor emulator task initialized with emulation = " + str(enableEmulation))
 	
 	def generateTelemetry(self) -> SensorData:
-		"""
-		Generates the telemetry data using the SenseHAT emulator.
-		
-		Returns:
-			SensorData: The sensor data with humidity reading.
-		"""
-		sensorData = SensorData(name = self.getName(), typeID = self.getTypeID())
+		self.latestSensorData = SensorData(typeID=self.typeID, name=self.name)
 		sensorVal = self.sh.environ.humidity
-		
-		# Set the sensor value
-		sensorData.setValue(sensorVal)
-		
-		# Update the time stamp to current time
-		self.latestSensorData = sensorData
-		
-		logging.debug("Humidity sensor emulator generated data: " + str(sensorVal))
-		
-		return sensorData
+		self.latestSensorData.setValue(sensorVal)
+		return self.latestSensorData

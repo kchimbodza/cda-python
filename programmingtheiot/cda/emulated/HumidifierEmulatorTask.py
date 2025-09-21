@@ -29,59 +29,30 @@ class HumidifierEmulatorTask(BaseActuatorSimTask):
 
 	def __init__(self):
 		super(HumidifierEmulatorTask, self).__init__(
-			name = ConfigConst.HUMIDIFIER_ACTUATOR_NAME, 
+			name = ConfigConst.HUMIDIFIER_ACTUATOR_NAME,
 			typeID = ConfigConst.HUMIDIFIER_ACTUATOR_TYPE,
 			simpleName = "HUMIDIFIER")
 		
-		# Load the enableEmulator configuration setting
-		configUtil = ConfigUtil()
-		enableEmulation = configUtil.getBoolean(
-			ConfigConst.CONSTRAINED_DEVICE, 
-			ConfigConst.ENABLE_EMULATOR_KEY)
-		
-		# Initialize SenseHAT instance - set emulate to True for emulator mode
+		enableEmulation = ConfigUtil().getBoolean(
+			ConfigConst.CONSTRAINED_DEVICE, ConfigConst.ENABLE_EMULATOR_KEY)
 		self.sh = SenseHAT(emulate = enableEmulation)
-		
-		logging.info("Humidifier emulator task initialized with emulation = " + str(enableEmulation))
 	
 	def _activateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		"""
-		Activates the humidifier by displaying a message on the SenseHAT LED screen.
-		
-		Args:
-			val: The target humidity value
-			stateData: Optional state data
-			
-		Returns:
-			int: 0 on success, -1 on failure
-		"""
 		if self.sh.screen:
-			msg = self.getSimpleName() + ' ON: ' + str(val) + '%'
+			msg = self.simpleName + ' ON: ' + str(val) + 'C'
 			self.sh.screen.scroll_text(msg)
-			logging.info("Humidifier activated with target humidity: " + str(val))
 			return 0
 		else:
 			logging.warning("No SenseHAT LED screen instance to write.")
 			return -1
 	
 	def _deactivateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
-		"""
-		Deactivates the humidifier by displaying an OFF message and clearing the screen.
-		
-		Args:
-			val: The current humidity value
-			stateData: Optional state data
-			
-		Returns:
-			int: 0 on success, -1 on failure
-		"""
 		if self.sh.screen:
-			msg = self.getSimpleName() + ' OFF'
+			msg = self.simpleName + ' OFF'
 			self.sh.screen.scroll_text(msg)
-			# Optional sleep (5 seconds) for message to scroll before clearing display
+			# optional sleep (5 seconds) for message to scroll before clearing display
 			sleep(5)
 			self.sh.screen.clear()
-			logging.info("Humidifier deactivated")
 			return 0
 		else:
 			logging.warning("No SenseHAT LED screen instance to clear / close.")

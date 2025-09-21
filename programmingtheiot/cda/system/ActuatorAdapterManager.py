@@ -12,9 +12,12 @@ import logging
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.common.IDataMessageListener import IDataMessageListener
+
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.cda.sim.HvacActuatorSimTask import HvacActuatorSimTask
 from programmingtheiot.cda.sim.HumidifierActuatorSimTask import HumidifierActuatorSimTask
+
+from importlib import import_module
 
 class ActuatorAdapterManager(object):
     """
@@ -39,13 +42,33 @@ class ActuatorAdapterManager(object):
         
         self.dataMsgListener = None
         
-        # Initialize actuator simulator tasks if not using emulator
+        # Initialize actuator tasks using the optional method pattern
+        self._initEnvironmentalActuationTasks()
+    
+    def _initEnvironmentalActuationTasks(self):
+        """
+        Initialize environmental actuation tasks based on emulator configuration.
+        """
         if not self.useEmulator:
-            self.hvacActuator = HvacActuatorSimTask()
+            # load the environmental tasks for simulated actuation
             self.humidifierActuator = HumidifierActuatorSimTask()
+            
+            # create the HVAC actuator
+            self.hvacActuator = HvacActuatorSimTask()
         else:
-            self.hvacActuator = None
-            self.humidifierActuator = None
+            hueModule = import_module('programmingtheiot.cda.emulated.HumidifierEmulatorTask', 'HumidiferEmulatorTask')
+            hueClazz = getattr(hueModule, 'HumidifierEmulatorTask')
+            self.humidifierActuator = hueClazz()
+            
+            # create the HVAC actuator emulator (using consistent variable name)
+            hveModule = import_module('programmingtheiot.cda.emulated.HvacEmulatorTask', 'HvacEmulatorTask')
+            hveClazz = getattr(hveModule, 'HvacEmulatorTask')
+            self.hvacActuator = hveClazz()
+            
+            # create the LED display actuator emulator
+            leDisplayModule = import_module('programmingtheiot.cda.emulated.LedDisplayEmulatorTask', 'LedDisplayEmulatorTask')
+            leClazz = getattr(leDisplayModule, 'LedDisplayEmulatorTask')
+            self.ledDisplayActuator = leClazz()
     
     def sendActuatorCommand(self, data: ActuatorData) -> bool:
         """
@@ -57,7 +80,7 @@ class ActuatorAdapterManager(object):
         if data and not data.isResponseFlagEnabled():
             if data.getLocationID() == self.locationID:
                 logging.info(
-                    'Processing actuator command for loc ID %s.',
+                    'Actuator command received for location ID %s. Processing...',
                     str(data.getLocationID()))
                 
                 aType = data.getTypeID()
@@ -68,6 +91,9 @@ class ActuatorAdapterManager(object):
                 
                 elif aType == ConfigConst.HVAC_ACTUATOR_TYPE and self.hvacActuator:
                     responseData = self.hvacActuator.updateActuator(data)
+                
+                elif aType == ConfigConst.LED_DISPLAY_ACTUATOR_TYPE and self.useEmulator and self.ledDisplayActuator:
+                    responseData = self.ledDisplayActuator.updateActuator(data)
                 
                 else:
                     logging.warning('No valid actuator type: %s', data.getTypeID())

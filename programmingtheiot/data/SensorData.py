@@ -62,9 +62,15 @@ class SensorData(BaseIotData):
             pass
     
     def __str__(self) -> str:
-        """
-        String representation of SensorData.
-        
-        @return: String representation
-        """
-        return f"SensorData[name={self.getName()}, typeID={self.getTypeID()}, timestamp={self.getTimeStamp()}, value={self.value}]"
+        return '{}={},{}={},{}={},{}={},{}={},{}={},{}={},{}={},{}={},value={}'.format(
+        ConfigConst.NAME_PROP, self.getName(),
+        ConfigConst.TYPE_ID_PROP, self.getTypeID(),
+        ConfigConst.TIMESTAMP_PROP, self.getTimeStamp(),
+        ConfigConst.STATUS_CODE_PROP, self.getStatusCode(),
+        ConfigConst.HAS_ERROR_PROP, self.hasErrorFlag(),
+        ConfigConst.LOCATION_ID_PROP, self.getLocationID(),
+        ConfigConst.ELEVATION_PROP, self.getElevation(),
+        ConfigConst.LATITUDE_PROP, self.getLatitude(),
+        ConfigConst.LONGITUDE_PROP, self.getLongitude(),
+        self.value)
+    
