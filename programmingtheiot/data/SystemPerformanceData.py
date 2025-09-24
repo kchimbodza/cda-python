@@ -9,14 +9,13 @@
 # provided within in order to meet the needs of your specific
 # Programming the Internet of Things project.
 #
-
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.data.BaseIotData import BaseIotData
 
 class SystemPerformanceData(BaseIotData):
     """
     System performance data class that extends BaseIotData.
-    Supports CPU and memory utilization metrics.
+    Supports CPU, memory, and disk utilization metrics.
     """
     
     def __init__(self, d = None):
@@ -34,6 +33,7 @@ class SystemPerformanceData(BaseIotData):
         
         self.cpuUtil = ConfigConst.DEFAULT_VAL
         self.memUtil = ConfigConst.DEFAULT_VAL
+        self.diskUtil = ConfigConst.DEFAULT_VAL
     
     def getCpuUtilization(self) -> float:
         """
@@ -50,6 +50,14 @@ class SystemPerformanceData(BaseIotData):
         @return: The memory utilization as a float
         """
         return self.memUtil
+    
+    def getDiskUtilization(self) -> float:
+        """
+        Get the disk utilization value.
+        
+        @return: The disk utilization as a float
+        """
+        return self.diskUtil
     
     def setCpuUtilization(self, cpuUtil: float):
         """
@@ -69,6 +77,15 @@ class SystemPerformanceData(BaseIotData):
         self.memUtil = memUtil
         self.updateTimeStamp()
     
+    def setDiskUtilization(self, diskUtil: float):
+        """
+        Set the disk utilization and update timestamp.
+        
+        @param diskUtil: The disk utilization value
+        """
+        self.diskUtil = diskUtil
+        self.updateTimeStamp()
+    
     def _handleUpdateData(self, data):
         """
         Private method to handle updating data from another SystemPerformanceData instance.
@@ -79,6 +96,7 @@ class SystemPerformanceData(BaseIotData):
             if data and isinstance(data, SystemPerformanceData):
                 self.cpuUtil = data.getCpuUtilization()
                 self.memUtil = data.getMemoryUtilization()
+                self.diskUtil = data.getDiskUtilization()
         except Exception as e:
             # Log the exception if needed
             pass
@@ -89,4 +107,4 @@ class SystemPerformanceData(BaseIotData):
         
         @return: String representation
         """
-        return f"SystemPerformanceData[name={self.getName()}, typeID={self.getTypeID()}, timestamp={self.getTimeStamp()}, cpuUtil={self.cpuUtil}, memUtil={self.memUtil}]"
+        return f"SystemPerformanceData[name={self.getName()}, typeID={self.getTypeID()}, timestamp={self.getTimeStamp()}, cpuUtil={self.cpuUtil}, memUtil={self.memUtil}, diskUtil={self.diskUtil}]"

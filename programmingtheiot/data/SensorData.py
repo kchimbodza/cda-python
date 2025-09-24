@@ -9,7 +9,6 @@
 # provided within in order to meet the needs of your specific
 # Programming the Internet of Things project.
 #
-
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.data.BaseIotData import BaseIotData
 
@@ -30,6 +29,7 @@ class SensorData(BaseIotData):
         super(SensorData, self).__init__(name=name, typeID=typeID, d=d)
         
         self.value = ConfigConst.DEFAULT_VAL
+        self.sensorType = typeID  # Add this for JSON serialization compatibility
     
     def getValue(self) -> float:
         """
@@ -39,6 +39,14 @@ class SensorData(BaseIotData):
         """
         return self.value
     
+    def getSensorType(self) -> int:
+        """
+        Get the sensor type.
+        
+        @return: The sensor type as an int
+        """
+        return self.sensorType
+    
     def setValue(self, newVal: float):
         """
         Set the sensor value and update timestamp.
@@ -46,6 +54,16 @@ class SensorData(BaseIotData):
         @param newVal: The new sensor value
         """
         self.value = newVal
+        self.updateTimeStamp()
+    
+    def setSensorType(self, sensorType: int):
+        """
+        Set the sensor type and update timestamp.
+        
+        @param sensorType: The sensor type value
+        """
+        self.sensorType = sensorType
+        self.setTypeID(sensorType)  # Keep both in sync
         self.updateTimeStamp()
     
     def _handleUpdateData(self, data):
@@ -57,6 +75,7 @@ class SensorData(BaseIotData):
         try:
             if data and isinstance(data, SensorData):
                 self.value = data.getValue()
+                self.sensorType = data.getSensorType()
         except Exception as e:
             # Log the exception if needed
             pass
@@ -73,4 +92,3 @@ class SensorData(BaseIotData):
         ConfigConst.LATITUDE_PROP, self.getLatitude(),
         ConfigConst.LONGITUDE_PROP, self.getLongitude(),
         self.value)
-    
