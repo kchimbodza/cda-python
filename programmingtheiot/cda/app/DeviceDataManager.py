@@ -44,6 +44,18 @@ class DeviceDataManager(IDataMessageListener):
         self.actuatorAdapterMgr = ActuatorAdapterManager()
         self.actuatorAdapterMgr.setDataMessageListener(self)
         
+        # MQTT Client Integration
+        self.enableMqttClient = \
+            self.configUtil.getBoolean( \
+                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_MQTT_CLIENT_KEY)
+                
+        self.mqttClient = None
+
+        if self.enableMqttClient:
+            from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
+            self.mqttClient = MqttClientConnector()
+            self.mqttClient.setDataMessageListener(self)
+        
         # Load temperature handling configuration
         self.enableHandleTempChangeOnDevice = self.configUtil.getBoolean(
             section=ConfigConst.CONSTRAINED_DEVICE,
@@ -147,6 +159,11 @@ class DeviceDataManager(IDataMessageListener):
         
         self.sysPerfMgr.startManager()
         self.sensorAdapterMgr.startManager()
+        
+        # Start MQTT client if enabled
+        if self.mqttClient:
+            self.mqttClient.connectClient()
+            self.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, callback = None, qos = ConfigConst.DEFAULT_QOS)
     
     def stopManager(self):
         """
@@ -156,6 +173,11 @@ class DeviceDataManager(IDataMessageListener):
         
         self.sysPerfMgr.stopManager()
         self.sensorAdapterMgr.stopManager()
+        
+        # Stop MQTT client if enabled
+        if self.mqttClient:
+            self.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE)
+            self.mqttClient.disconnectClient()
     
     def _handleSensorDataAnalysis(self, data: SensorData):
         """
