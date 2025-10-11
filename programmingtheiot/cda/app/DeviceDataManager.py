@@ -17,10 +17,12 @@ from programmingtheiot.common.ResourceNameEnum import ResourceNameEnum
 from programmingtheiot.cda.system.ActuatorAdapterManager import ActuatorAdapterManager
 from programmingtheiot.cda.system.SensorAdapterManager import SensorAdapterManager
 from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
+from programmingtheiot.cda.connection.CoapServerAdapter import CoapServerAdapter
 
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
 from programmingtheiot.data.SystemPerformanceData import SystemPerformanceData
+
 
 class DeviceDataManager(IDataMessageListener):
     """
@@ -55,6 +57,16 @@ class DeviceDataManager(IDataMessageListener):
             from programmingtheiot.cda.connection.MqttClientConnector import MqttClientConnector
             self.mqttClient = MqttClientConnector()
             self.mqttClient.setDataMessageListener(self)
+        
+        # CoAP Server Integration
+        self.enableCoapServer = \
+            self.configUtil.getBoolean( \
+                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_SERVER_KEY)
+
+        if self.enableCoapServer:
+            self.coapServer = CoapServerAdapter(dataMsgListener=self)
+        else:
+            self.coapServer = None
         
         # Load temperature handling configuration
         self.enableHandleTempChangeOnDevice = self.configUtil.getBoolean(
@@ -135,6 +147,12 @@ class DeviceDataManager(IDataMessageListener):
         else:
             logging.warning("Invalid sensor data message.")
             return False
+        
+        # Update CoAP resource handler if enabled
+        if self.coapServer:
+            telemetryHandler = self.coapServer.getTelemetryResourceHandler()
+            if telemetryHandler:
+                telemetryHandler.onSensorDataUpdate(data)
     
     def handleSystemPerformanceMessage(self, data: SystemPerformanceData) -> bool:
         """
@@ -150,6 +168,12 @@ class DeviceDataManager(IDataMessageListener):
         else:
             logging.warning("Invalid system performance data.")
             return False
+        
+        # Update CoAP resource handler if enabled
+        if self.coapServer:
+            sysPerfHandler = self.coapServer.getSystemPerformanceResourceHandler()
+            if sysPerfHandler:
+                sysPerfHandler.onSystemPerformanceDataUpdate(data)
     
     def startManager(self):
         """
@@ -164,6 +188,10 @@ class DeviceDataManager(IDataMessageListener):
         if self.mqttClient:
             self.mqttClient.connectClient()
             self.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, callback = None, qos = ConfigConst.DEFAULT_QOS)
+        
+        # Start CoAP server if enabled
+        if self.coapServer:
+            self.coapServer.startServer()
     
     def stopManager(self):
         """
@@ -178,6 +206,10 @@ class DeviceDataManager(IDataMessageListener):
         if self.mqttClient:
             self.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE)
             self.mqttClient.disconnectClient()
+        
+        # Stop CoAP server if enabled
+        if self.coapServer:
+            self.coapServer.stopServer()
     
     def _handleSensorDataAnalysis(self, data: SensorData):
         """
