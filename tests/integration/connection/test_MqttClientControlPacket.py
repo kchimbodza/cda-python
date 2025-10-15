@@ -49,65 +49,41 @@ class MqttClientControlPacketTest(unittest.TestCase):
 	def tearDown(self):
 		pass
 
-	def testConnectAndDisconnect(self):
+	def testAllMqttControlPackets(self):
 		"""
-		Test basic connect and disconnect to generate:
-		- CONNECT, CONNACK, DISCONNECT packets
+		Comprehensive test to generate all 14 MQTT 3.1.1 Control Packets in sequence.
+		
+		Packet Types Generated:
+		1. CONNECT - Client connection request
+		2. CONNACK - Server connection acknowledgment
+		3. PUBLISH - Publish message (QoS 0, 1, 2)
+		4. PUBACK - Publish acknowledgment (QoS 1)
+		5. PUBREC - Publish received (QoS 2, part 1)
+		6. PUBREL - Publish release (QoS 2, part 2)
+		7. PUBCOMP - Publish complete (QoS 2, part 3)
+		8. SUBSCRIBE - Client subscribe request
+		9. SUBACK - Server subscribe acknowledgment
+		10. UNSUBSCRIBE - Client unsubscribe request
+		11. UNSUBACK - Server unsubscribe acknowledgment
+		12. PINGREQ - Ping request
+		13. PINGRESP - Ping response
+		14. DISCONNECT - Client disconnect
 		"""
-		logging.info("=== Testing Connect and Disconnect ===")
+		logging.info("\n" + "="*70)
+		logging.info("STARTING COMPREHENSIVE MQTT CONTROL PACKET TEST")
+		logging.info("="*70)
 		
-		# Connect (generates CONNECT and CONNACK)
-		self.mcc.connectClient()
-		sleep(3)
-		
-		# Disconnect (generates DISCONNECT)
-		self.mcc.disconnectClient()
-		sleep(2)
-	
-	def testServerPing(self):
-		"""
-		Test server ping to generate:
-		- PINGREQ, PINGRESP packets
-		"""
-		logging.info("=== Testing Server Ping (KeepAlive) ===")
-		
-		# Get a short keepalive for faster testing
-		shortKeepAlive = 10  # 10 seconds instead of default 60
-		
-		# Create temporary client with short keepalive
-		tempClient = MqttClientConnector(clientID = "PingTestClient")
-		# Override keepAlive setting
-		tempClient.keepAlive = shortKeepAlive
-		
-		tempClient.connectClient()
-		
-		# Wait longer than keepalive to trigger PINGREQ/PINGRESP
-		logging.info("Waiting for keepalive ping...")
-		sleep(shortKeepAlive + 5)
-		
-		tempClient.disconnectClient()
-		sleep(2)
-	
-	def testPubSub(self):
-		"""
-		Test publish/subscribe with different QoS levels to generate:
-		QoS 0: PUBLISH
-		QoS 1: PUBLISH, PUBACK  
-		QoS 2: PUBLISH, PUBREC, PUBREL, PUBCOMP
-		Also: SUBSCRIBE, SUBACK, UNSUBSCRIBE, UNSUBACK
-		"""
-		logging.info("=== Testing Pub/Sub with All QoS Levels ===")
-		
+		# Set up data message listener
 		self.mcc.setDataMessageListener(DefaultDataMessageListener())
-		self.mcc.connectClient()
-		sleep(2)
 		
-		# Test different message types
+		# Prepare test payloads
 		actuatorData = ActuatorData()
 		actuatorData.setCommand(5)
+		actuatorData.setName("TestActuator")
 		
 		sensorData = SensorData()
 		sensorData.setValue(25.5)
+		sensorData.setName("TestSensor")
 		
 		sysPerfData = SystemPerformanceData()
 		
@@ -115,54 +91,128 @@ class MqttClientControlPacketTest(unittest.TestCase):
 		sensorPayload = DataUtil().sensorDataToJson(sensorData)
 		sysPerfPayload = DataUtil().systemPerformanceDataToJson(sysPerfData)
 		
-		# === QoS 0 Testing ===
-		logging.info("--- Testing QoS 0 ---")
+		# =====================================================================
+		# STEP 1: CONNECT and CONNACK
+		# =====================================================================
+		logging.info("\n>>> STEP 1: Generating CONNECT and CONNACK packets")
+		self.mcc.connectClient()
+		sleep(3)
+		logging.info("✓ CONNECT and CONNACK packets should be captured")
 		
-		# Subscribe QoS 0 (SUBSCRIBE, SUBACK)
+		# =====================================================================
+		# STEP 2: QoS 0 - SUBSCRIBE, SUBACK, PUBLISH, UNSUBSCRIBE, UNSUBACK
+		# =====================================================================
+		logging.info("\n>>> STEP 2: Testing QoS 0 (PUBLISH only)")
+		
+		# SUBSCRIBE and SUBACK
+		logging.info("Subscribing to sensor topic (QoS 0)...")
 		self.mcc.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos=0)
 		sleep(2)
+		logging.info("✓ SUBSCRIBE and SUBACK packets should be captured")
 		
-		# Publish QoS 0 (PUBLISH only)
+		# PUBLISH (QoS 0 - no acknowledgment)
+		logging.info("Publishing to sensor topic (QoS 0)...")
 		self.mcc.publishMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sensorPayload, qos=0)
 		sleep(3)
+		logging.info("✓ PUBLISH (QoS 0) packet should be captured")
 		
-		# Unsubscribe (UNSUBSCRIBE, UNSUBACK)
+		# UNSUBSCRIBE and UNSUBACK
+		logging.info("Unsubscribing from sensor topic...")
 		self.mcc.unsubscribeFromTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE)
 		sleep(2)
+		logging.info("✓ UNSUBSCRIBE and UNSUBACK packets should be captured")
 		
-		# === QoS 1 Testing ===
-		logging.info("--- Testing QoS 1 ---")
+		# =====================================================================
+		# STEP 3: QoS 1 - SUBSCRIBE, SUBACK, PUBLISH, PUBACK, UNSUBSCRIBE, UNSUBACK
+		# =====================================================================
+		logging.info("\n>>> STEP 3: Testing QoS 1 (PUBLISH + PUBACK)")
 		
-		# Subscribe QoS 1 (SUBSCRIBE, SUBACK)
+		# SUBSCRIBE and SUBACK (QoS 1)
+		logging.info("Subscribing to actuator topic (QoS 1)...")
 		self.mcc.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, qos=1)
 		sleep(2)
+		logging.info("✓ SUBSCRIBE and SUBACK packets should be captured")
 		
-		# Publish QoS 1 (PUBLISH, PUBACK)
+		# PUBLISH and PUBACK (QoS 1)
+		logging.info("Publishing to actuator topic (QoS 1)...")
 		self.mcc.publishMessage(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, actuatorPayload, qos=1)
 		sleep(3)
+		logging.info("✓ PUBLISH and PUBACK packets should be captured")
 		
-		# Unsubscribe (UNSUBSCRIBE, UNSUBACK)
+		# UNSUBSCRIBE and UNSUBACK
+		logging.info("Unsubscribing from actuator topic...")
 		self.mcc.unsubscribeFromTopic(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE)
 		sleep(2)
+		logging.info("✓ UNSUBSCRIBE and UNSUBACK packets should be captured")
 		
-		# === QoS 2 Testing ===
-		logging.info("--- Testing QoS 2 ---")
+		# =====================================================================
+		# STEP 4: QoS 2 - SUBSCRIBE, SUBACK, PUBLISH, PUBREC, PUBREL, PUBCOMP
+		# =====================================================================
+		logging.info("\n>>> STEP 4: Testing QoS 2 (PUBLISH + PUBREC + PUBREL + PUBCOMP)")
 		
-		# Subscribe QoS 2 (SUBSCRIBE, SUBACK)
+		# SUBSCRIBE and SUBACK (QoS 2)
+		logging.info("Subscribing to management status topic (QoS 2)...")
 		self.mcc.subscribeToTopic(ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, qos=2)
 		sleep(2)
+		logging.info("✓ SUBSCRIBE and SUBACK packets should be captured")
 		
-		# Publish QoS 2 (PUBLISH, PUBREC, PUBREL, PUBCOMP)
+		# PUBLISH, PUBREC, PUBREL, PUBCOMP (QoS 2 four-way handshake)
+		logging.info("Publishing to management status topic (QoS 2)...")
 		self.mcc.publishMessage(ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE, sysPerfPayload, qos=2)
-		sleep(5)  # QoS 2 takes longer
+		sleep(5)  # QoS 2 requires more time for 4-way handshake
+		logging.info("✓ PUBLISH, PUBREC, PUBREL, and PUBCOMP packets should be captured")
 		
-		# Unsubscribe (UNSUBSCRIBE, UNSUBACK) 
+		# UNSUBSCRIBE and UNSUBACK
+		logging.info("Unsubscribing from management status topic...")
 		self.mcc.unsubscribeFromTopic(ResourceNameEnum.CDA_MGMT_STATUS_MSG_RESOURCE)
 		sleep(2)
+		logging.info("✓ UNSUBSCRIBE and UNSUBACK packets should be captured")
 		
-		# Final disconnect
+		# =====================================================================
+		# STEP 5: PINGREQ and PINGRESP (KeepAlive)
+		# =====================================================================
+		logging.info("\n>>> STEP 5: Waiting for KeepAlive PING packets")
+		logging.info("Note: PINGREQ/PINGRESP will be generated automatically by the client")
+		logging.info("      based on the keepAlive interval (default: 60 seconds)")
+		logging.info("Waiting 70 seconds to ensure PING packets are generated...")
+		
+		# Wait for keepalive to trigger (default is usually 60 seconds)
+		for i in range(7):
+			sleep(10)
+			logging.info(f"  ... waiting ({(i+1)*10}/70 seconds)")
+		
+		logging.info("✓ PINGREQ and PINGRESP packets should be captured")
+		
+		# =====================================================================
+		# STEP 6: DISCONNECT
+		# =====================================================================
+		logging.info("\n>>> STEP 6: Generating DISCONNECT packet")
 		self.mcc.disconnectClient()
 		sleep(2)
+		logging.info("✓ DISCONNECT packet should be captured")
+		
+		# =====================================================================
+		# TEST COMPLETE
+		# =====================================================================
+		logging.info("\n" + "="*70)
+		logging.info("ALL 14 MQTT CONTROL PACKETS SHOULD NOW BE CAPTURED")
+		logging.info("="*70)
+		logging.info("\nPacket Summary:")
+		logging.info("  1. CONNECT    ✓")
+		logging.info("  2. CONNACK    ✓")
+		logging.info("  3. PUBLISH    ✓ (QoS 0, 1, 2)")
+		logging.info("  4. PUBACK     ✓ (QoS 1)")
+		logging.info("  5. PUBREC     ✓ (QoS 2)")
+		logging.info("  6. PUBREL     ✓ (QoS 2)")
+		logging.info("  7. PUBCOMP    ✓ (QoS 2)")
+		logging.info("  8. SUBSCRIBE  ✓ (QoS 0, 1, 2)")
+		logging.info("  9. SUBACK     ✓ (QoS 0, 1, 2)")
+		logging.info(" 10. UNSUBSCRIBE ✓")
+		logging.info(" 11. UNSUBACK   ✓")
+		logging.info(" 12. PINGREQ    ✓")
+		logging.info(" 13. PINGRESP   ✓")
+		logging.info(" 14. DISCONNECT ✓")
+		logging.info("="*70 + "\n")
 
 if __name__ == "__main__":
 	unittest.main()
