@@ -18,6 +18,7 @@ from programmingtheiot.cda.system.ActuatorAdapterManager import ActuatorAdapterM
 from programmingtheiot.cda.system.SensorAdapterManager import SensorAdapterManager
 from programmingtheiot.cda.system.SystemPerformanceManager import SystemPerformanceManager
 from programmingtheiot.cda.connection.CoapServerAdapter import CoapServerAdapter
+from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConnector
 
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
@@ -67,6 +68,18 @@ class DeviceDataManager(IDataMessageListener):
             self.coapServer = CoapServerAdapter(dataMsgListener=self)
         else:
             self.coapServer = None
+        
+        # CoAP Client Integration
+        self.enableCoapClient = \
+            self.configUtil.getBoolean( \
+                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_CLIENT_KEY)
+
+        if self.enableCoapClient:
+            self.coapClient = CoapClientConnector(dataMsgListener=self)
+            logging.info("CoAP client enabled and initialized")
+        else:
+            self.coapClient = None
+            logging.info("CoAP client disabled in configuration")
         
         # Load temperature handling configuration
         self.enableHandleTempChangeOnDevice = self.configUtil.getBoolean(
@@ -143,16 +156,16 @@ class DeviceDataManager(IDataMessageListener):
             # Analyze sensor data for threshold crossings
             self._handleSensorDataAnalysis(data)
             
+            # Update CoAP resource handler if enabled
+            if self.coapServer:
+                telemetryHandler = self.coapServer.getTelemetryResourceHandler()
+                if telemetryHandler:
+                    telemetryHandler.onSensorDataUpdate(data)
+            
             return True
         else:
             logging.warning("Invalid sensor data message.")
             return False
-        
-        # Update CoAP resource handler if enabled
-        if self.coapServer:
-            telemetryHandler = self.coapServer.getTelemetryResourceHandler()
-            if telemetryHandler:
-                telemetryHandler.onSensorDataUpdate(data)
     
     def handleSystemPerformanceMessage(self, data: SystemPerformanceData) -> bool:
         """
@@ -163,17 +176,17 @@ class DeviceDataManager(IDataMessageListener):
         """
         if data:
             logging.debug("System performance data received.")
-            # TODO: Add upstream transmission logic in future chapters
+            
+            # Update CoAP resource handler if enabled
+            if self.coapServer:
+                sysPerfHandler = self.coapServer.getSystemPerformanceResourceHandler()
+                if sysPerfHandler:
+                    sysPerfHandler.onSystemPerformanceDataUpdate(data)
+            
             return True
         else:
             logging.warning("Invalid system performance data.")
             return False
-        
-        # Update CoAP resource handler if enabled
-        if self.coapServer:
-            sysPerfHandler = self.coapServer.getSystemPerformanceResourceHandler()
-            if sysPerfHandler:
-                sysPerfHandler.onSystemPerformanceDataUpdate(data)
     
     def startManager(self):
         """
@@ -192,6 +205,10 @@ class DeviceDataManager(IDataMessageListener):
         # Start CoAP server if enabled
         if self.coapServer:
             self.coapServer.startServer()
+        
+        # NOTE: CoAP client does not have start/stop methods
+        # It is instantiated in __init__ and ready to use
+        # Requests are sent on-demand via sendXRequest() methods
     
     def stopManager(self):
         """
@@ -210,6 +227,9 @@ class DeviceDataManager(IDataMessageListener):
         # Stop CoAP server if enabled
         if self.coapServer:
             self.coapServer.stopServer()
+        
+        # NOTE: CoAP client does not have start/stop methods
+        # No cleanup needed as it creates contexts per-request
     
     def _handleSensorDataAnalysis(self, data: SensorData):
         """

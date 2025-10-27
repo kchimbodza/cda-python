@@ -86,6 +86,9 @@ class CoapServerAdapterTest(unittest.TestCase):
 		self.coapServer.startServer()
 		self.scheduler.start()
 		
+		# Give the CoAP server time to bind its UDP socket
+		sleep(0.2)
+		
 	@classmethod
 	def tearDownClass(self):
 		self.scheduler.shutdown()
