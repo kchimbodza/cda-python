@@ -31,9 +31,11 @@ class DeviceDataManager(IDataMessageListener):
     Orchestrates all sensor, actuator, and system performance managers.
     """
     
-    def __init__(self):
+    def __init__(self, disableAllComms = False):
         """
         Constructor for DeviceDataManager.
+        
+        @param disableAllComms: If True, disables all communications (MQTT, CoAP)
         """
         self.configUtil = ConfigUtil()
         
@@ -48,9 +50,12 @@ class DeviceDataManager(IDataMessageListener):
         self.actuatorAdapterMgr.setDataMessageListener(self)
         
         # MQTT Client Integration
-        self.enableMqttClient = \
-            self.configUtil.getBoolean( \
-                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_MQTT_CLIENT_KEY)
+        if disableAllComms:
+            self.enableMqttClient = False
+        else:
+            self.enableMqttClient = \
+                self.configUtil.getBoolean( \
+                    section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_MQTT_CLIENT_KEY)
                 
         self.mqttClient = None
 
@@ -60,9 +65,12 @@ class DeviceDataManager(IDataMessageListener):
             self.mqttClient.setDataMessageListener(self)
         
         # CoAP Server Integration
-        self.enableCoapServer = \
-            self.configUtil.getBoolean( \
-                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_SERVER_KEY)
+        if disableAllComms:
+            self.enableCoapServer = False
+        else:
+            self.enableCoapServer = \
+                self.configUtil.getBoolean( \
+                    section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_SERVER_KEY)
 
         if self.enableCoapServer:
             self.coapServer = CoapServerAdapter(dataMsgListener=self)
@@ -70,9 +78,12 @@ class DeviceDataManager(IDataMessageListener):
             self.coapServer = None
         
         # CoAP Client Integration
-        self.enableCoapClient = \
-            self.configUtil.getBoolean( \
-                section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_CLIENT_KEY)
+        if disableAllComms:
+            self.enableCoapClient = False
+        else:
+            self.enableCoapClient = \
+                self.configUtil.getBoolean( \
+                    section = ConfigConst.CONSTRAINED_DEVICE, key = ConfigConst.ENABLE_COAP_CLIENT_KEY)
 
         if self.enableCoapClient:
             self.coapClient = CoapClientConnector(dataMsgListener=self)
@@ -94,23 +105,21 @@ class DeviceDataManager(IDataMessageListener):
             section=ConfigConst.CONSTRAINED_DEVICE,
             key=ConfigConst.TRIGGER_HVAC_TEMP_CEILING_KEY)
     
-    def handleActuatorCommandMessage(self, data: ActuatorData) -> bool:
+    def handleActuatorCommandMessage(self, data: ActuatorData) -> ActuatorData:
         """
         Handle incoming actuator command message.
         
         @param data: The ActuatorData command message
-        @return: True if processed successfully, False otherwise
+        @return: ActuatorData response from the actuator
         """
         if data:
             logging.info("Processing actuator command message.")
             
-            self.actuatorAdapterMgr.sendActuatorCommand(data)
-            
-            return True
+            # TODO: add further validation before sending the command
+            return self.actuatorAdapterMgr.sendActuatorCommand(data)
         else:
-            logging.warning("Invalid actuator command message.")
-            
-            return False
+            logging.warning("Received invalid ActuatorData command message. Ignoring.")
+            return None
     
     def handleActuatorCommandResponse(self, data: ActuatorData) -> bool:
         """

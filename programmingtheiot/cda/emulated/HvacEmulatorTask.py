@@ -9,14 +9,11 @@
 # provided within in order to meet the needs of your specific
 # Programming the Internet of Things project.
 # 
-
 import logging
 from time import sleep
-
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.common.ConfigUtil import ConfigUtil
 from programmingtheiot.cda.sim.BaseActuatorSimTask import BaseActuatorSimTask
-
 from pisense import SenseHAT
 
 class HvacEmulatorTask(BaseActuatorSimTask):
@@ -26,7 +23,6 @@ class HvacEmulatorTask(BaseActuatorSimTask):
 	SenseHAT emulator's LED display to show the state.
 	
 	"""
-
 	def __init__(self):
 		super(HvacEmulatorTask, self).__init__(
 			name = ConfigConst.HVAC_ACTUATOR_NAME,
@@ -38,6 +34,13 @@ class HvacEmulatorTask(BaseActuatorSimTask):
 		self.sh = SenseHAT(emulate = enableEmulation)
 	
 	def _activateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
+		logging.info("Emulating HVAC actuator ON: ")
+		logging.info("*******")
+		logging.info("* O N *")
+		logging.info("*******")
+		logging.info("HVAC VALUE -> " + str(val))
+		logging.info("=======")
+		
 		if self.sh.screen:
 			msg = self.simpleName + ' ON: ' + str(val) + 'C'
 			self.sh.screen.scroll_text(msg)
@@ -47,6 +50,13 @@ class HvacEmulatorTask(BaseActuatorSimTask):
 			return -1
 	
 	def _deactivateActuator(self, val: float = ConfigConst.DEFAULT_VAL, stateData: str = None) -> int:
+		logging.info("Emulating HVAC actuator OFF: ")
+		logging.info("*******")
+		logging.info("* O F F *")
+		logging.info("*******")
+		logging.info("HVAC VALUE -> " + str(val))
+		logging.info("=======")
+		
 		if self.sh.screen:
 			msg = self.simpleName + ' OFF'
 			self.sh.screen.scroll_text(msg)

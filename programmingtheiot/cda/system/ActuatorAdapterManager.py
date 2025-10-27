@@ -70,12 +70,12 @@ class ActuatorAdapterManager(object):
             leClazz = getattr(leDisplayModule, 'LedDisplayEmulatorTask')
             self.ledDisplayActuator = leClazz()
     
-    def sendActuatorCommand(self, data: ActuatorData) -> bool:
+    def sendActuatorCommand(self, data: ActuatorData) -> ActuatorData:
         """
         Send an actuator command to the appropriate actuator task.
         
         @param data: The ActuatorData containing the command to execute
-        @return: True if command was processed, False otherwise
+        @return: ActuatorData response from the actuator, or None if command failed
         """
         if data and not data.isResponseFlagEnabled():
             if data.getLocationID() == self.locationID:
@@ -102,13 +102,17 @@ class ActuatorAdapterManager(object):
                     if self.dataMsgListener:
                         self.dataMsgListener.handleActuatorCommandResponse(responseData)
                     
-                    return True
+                    # Return the ActuatorData response object
+                    return responseData
+                else:
+                    logging.warning('No response data received from actuator.')
+                    return None
             else:
                 logging.warning('Invalid loc ID match: %s', str(data.getLocationID()))
+                return None
         else:
             logging.warning('Invalid actuator msg. Response or null. Ignoring.')
-        
-        return False
+            return None
     
     def setDataMessageListener(self, listener: IDataMessageListener):
         """

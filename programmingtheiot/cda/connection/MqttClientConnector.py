@@ -11,6 +11,7 @@
 # 
 
 import logging
+import ssl
 import paho.mqtt.client as mqttClient
 
 import programmingtheiot.common.ConfigConst as ConfigConst
@@ -60,6 +61,15 @@ class MqttClientConnector(IPubSubClient):
 		
 		self.mqttClient = None
 		
+		# TLS/Encryption support
+		self.enableEncryption = \
+			self.config.getBoolean( \
+				ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.ENABLE_CRYPT_KEY)
+		
+		self.pemFileName = \
+			self.config.getProperty( \
+				ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.CERT_FILE_KEY)
+		
 		# Set clientID - use locationID from config if not provided
 		if not clientID:
 			self.clientID = \
@@ -80,12 +90,30 @@ class MqttClientConnector(IPubSubClient):
 	def connectClient(self) -> bool:
 		"""
 		Connects the MQTT client to the broker if not already connected.
+		Supports TLS encryption if enabled in configuration.
 		
 		@return True if connection was initiated, False if already connected.
 		"""
 		if not self.mqttClient:
 			# Create MQTT client instance with clean session
 			self.mqttClient = mqttClient.Client(client_id = self.clientID, clean_session = True)
+			
+			try:
+				if self.enableEncryption:
+					logging.info("Enabling TLS encryption...")
+					
+					self.port = \
+						self.config.getInteger( \
+							ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.SECURE_PORT_KEY, ConfigConst.DEFAULT_MQTT_SECURE_PORT)
+					
+					# IMPORTANT NOTE: Check your Python version for the version
+					# of TLS supported in the `ssl` module. It may need to be
+					# changed from what is indicated below.
+					# 
+					# see https://docs.python.org/3/library/ssl.html for more options.
+					self.mqttClient.tls_set(self.pemFileName, tls_version = ssl.PROTOCOL_TLS_CLIENT)
+			except:
+				logging.warning("Failed to enable TLS encryption. Using unencrypted connection.")
 			
 			# Set callback functions
 			self.mqttClient.on_connect = self.onConnect
