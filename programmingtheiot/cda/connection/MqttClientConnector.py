@@ -165,8 +165,11 @@ class MqttClientConnector(IPubSubClient):
 		@param client The client instance for this callback
 		@param userdata The private user data
 		@param mid The message ID
+		
+		NOTE: Logging disabled for performance testing to reduce I/O overhead
 		"""
-		logging.info('MQTT message published: ' + str(client))
+		# Logging disabled for performance testing
+		pass
 	
 	def onSubscribe(self, client, userdata, mid, granted_qos):
 		"""
@@ -202,6 +205,8 @@ class MqttClientConnector(IPubSubClient):
 		@param msg The message to publish
 		@param qos The QoS level for the message
 		@return True if successful, False otherwise
+		
+		NOTE: Logging disabled for performance testing to reduce I/O overhead
 		"""
 		# check validity of resource (topic)
 		if not resource:

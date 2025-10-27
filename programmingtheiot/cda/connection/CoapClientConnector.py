@@ -155,7 +155,8 @@ class CoapClientConnector(IRequestResponseClient):
 		if resource or name:
 			resourcePath = self._createResourcePath(resource, name)
 			
-			logging.info("Issuing Async POST to path: " + resourcePath)
+			# NOTE: Logging disabled for performance testing
+			# logging.info("Issuing Async POST to path: " + resourcePath)
 			
 			try:
 				asyncio.get_event_loop().run_until_complete(
@@ -184,7 +185,8 @@ class CoapClientConnector(IRequestResponseClient):
 		if resource or name:
 			resourcePath = self._createResourcePath(resource, name)
 			
-			logging.info("Issuing Async PUT to path: " + resourcePath)
+			# NOTE: Logging disabled for performance testing
+			# logging.info("Issuing Async PUT to path: " + resourcePath)
 			
 			try:
 				asyncio.get_event_loop().run_until_complete(
@@ -442,14 +444,13 @@ class CoapClientConnector(IRequestResponseClient):
 			logging.warning('POST response invalid. Ignoring.')
 			return
 		
-		logging.info('POST response received.')
-		
-		if self.includeDebugLogDetail:
-			logging.info(f'POST Response Code: {response.code}')
-		
-		if response.payload:
-			payloadStr = response.payload.decode('utf-8')
-			logging.info('POST response payload: %s', payloadStr)
+		# NOTE: Logging disabled for performance testing
+		# logging.info('POST response received.')
+		# if self.includeDebugLogDetail:
+		# 	logging.info(f'POST Response Code: {response.code}')
+		# if response.payload:
+		# 	payloadStr = response.payload.decode('utf-8')
+		# 	logging.info('POST response payload: %s', payloadStr)
 	
 	async def _handlePutRequest(self, resourcePath: str = None, payload: str = None, enableCON: bool = False, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT):
 		"""
@@ -499,14 +500,13 @@ class CoapClientConnector(IRequestResponseClient):
 			logging.warning('PUT response invalid. Ignoring.')
 			return
 		
-		logging.info('PUT response received.')
-		
-		if self.includeDebugLogDetail:
-			logging.info(f'PUT Response Code: {response.code}')
-		
-		if response.payload:
-			payloadStr = response.payload.decode('utf-8')
-			logging.info('PUT response payload: %s', payloadStr)
+		# NOTE: Logging disabled for performance testing
+		# logging.info('PUT response received.')
+		# if self.includeDebugLogDetail:
+		# 	logging.info(f'PUT Response Code: {response.code}')
+		# if response.payload:
+		# 	payloadStr = response.payload.decode('utf-8')
+		# 	logging.info('PUT response payload: %s', payloadStr)
 	
 	async def _handleDeleteRequest(self, resourcePath: str = None, enableCON: bool = False, timeout: int = IRequestResponseClient.DEFAULT_TIMEOUT):
 		"""
@@ -648,3 +648,14 @@ class CoapClientConnector(IRequestResponseClient):
 		else:
 			if not ignoreErr:
 				logging.warning('Resource not currently under observation. Ignoring: ' + resourcePath)
+	
+	def disconnectClient(self):
+		"""
+		Disconnect the CoAP client and clean up resources.
+		"""
+		if self.coapClient:
+			try:
+				asyncio.get_event_loop().run_until_complete(self.coapClient.shutdown())
+				logging.info("CoAP client disconnected")
+			except Exception as e:
+				logging.warning("Error disconnecting CoAP client: " + str(e))

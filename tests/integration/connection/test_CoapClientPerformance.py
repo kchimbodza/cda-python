@@ -22,17 +22,15 @@ from programmingtheiot.data.SensorData import SensorData
 
 class CoapClientPerformanceTest(unittest.TestCase):
 	"""
-	This test case class contains very basic performance tests for
-	CoapClientConnector. It should not be considered complete,
-	but serve as a starting point for the student implementing
-	additional functionality within their Programming the IoT
-	environment.
+	This test case class contains performance benchmarking tests
+	for CoapClientConnector using CON and NON message types.
+	Tests measure the time to POST 10,000 messages at each type.
 	"""
 	NS_IN_MILLIS = 1000000
 	MAX_TEST_RUNS = 10000
 	
 	@classmethod
-	def setUpClass(self):
+	def setUpClass(cls):
 		logging.disable(level = logging.WARNING)
 		
 	def setUp(self):
@@ -40,75 +38,31 @@ class CoapClientPerformanceTest(unittest.TestCase):
 
 	def tearDown(self):
 		self.coapClient.disconnectClient()
-					
-	@unittest.skip("Ignore for now.")
-	def testGetRequestCon(self):
-		"""
-		Comment the annotation to perf test CON GET
-		"""
-		print("Testing GET - CON")
-		
-		self._execTestGet(self.MAX_TEST_RUNS, True)
 
-	@unittest.skip("Ignore for now.")
-	def testGetRequestNon(self):
-		"""
-		Comment the annotation to perf test NON GET
-		"""
-		print("Testing GET - NON")
-		
-		self._execTestGet(self.MAX_TEST_RUNS, False)
-
-	@unittest.skip("Ignore for now.")
+	#@unittest.skip("Ignore for now.")
 	def testPostRequestCon(self):
 		"""
-		Comment the annotation to perf test CON POST
+		Test POST performance with CON (Confirmable) messages.
 		"""
 		print("Testing POST - CON")
-		
 		self._execTestPost(self.MAX_TEST_RUNS, True)
 
-	@unittest.skip("Ignore for now.")
+	#@unittest.skip("Ignore for now.")
 	def testPostRequestNon(self):
 		"""
-		Comment the annotation to perf test NON POST
+		Test POST performance with NON (Non-Confirmable) messages.
 		"""
 		print("Testing POST - NON")
-		
 		self._execTestPost(self.MAX_TEST_RUNS, False)
 
-	@unittest.skip("Ignore for now.")
-	def testPutRequestCon(self):
-		"""
-		Comment the annotation to perf test CON PUT
-		"""
-		print("Testing PUT - CON")
-		
-		self._execTestPut(self.MAX_TEST_RUNS, True)
-
-	@unittest.skip("Ignore for now.")
-	def testPutRequestNon(self):
-		"""
-		Comment the annotation to perf test NON PUT
-		"""
-		print("Testing PUT - NON")
-		
-		self._execTestPut(self.MAX_TEST_RUNS, False)
-
-	def _execTestGet(self, maxTestRuns: int, useCon: bool):
-		startTime = time.time_ns()
-		
-		for seqNo in range(0, maxTestRuns):
-			self.coapClient.sendGetRequest(resource = ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, enableCON = useCon)
-			
-		endTime = time.time_ns()
-		elapsedMillis = (endTime - startTime) / self.NS_IN_MILLIS
-		
-		print("\nGET message - useCON = " + str(useCon) + " [" + str(maxTestRuns) + "]: " + str(elapsedMillis) + " ms")
-		
-		sleep(2)
-		
 	def _execTestPost(self, maxTestRuns: int, useCon: bool):
+		"""
+		Execute POST performance test.
+		
+		Args:
+			maxTestRuns: Number of messages to send
+			useCon: True for CON (confirmable), False for NON (non-confirmable)
+		"""
 		sensorData = SensorData()
 		payload = DataUtil().sensorDataToJson(sensorData)
 		
@@ -120,26 +74,9 @@ class CoapClientPerformanceTest(unittest.TestCase):
 		endTime = time.time_ns()
 		elapsedMillis = (endTime - startTime) / self.NS_IN_MILLIS
 		
-		print("\nPOST message - useCON = " + str(useCon) + " [" + str(maxTestRuns) + "]: " + str(elapsedMillis) + " ms. Payload Len: " + str(len(payload)))
+		print("POST message - useCON = " + str(useCon) + " [" + str(maxTestRuns) + "]: " + str(elapsedMillis) + " ms")
 		
 		sleep(2)
-		
-	def _execTestPut(self, maxTestRuns: int, useCon: bool):
-		sensorData = SensorData()
-		payload = DataUtil().sensorDataToJson(sensorData)
-		
-		startTime = time.time_ns()
-		
-		for seqNo in range(0, maxTestRuns):
-			self.coapClient.sendPostRequest(resource = ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, enableCON = useCon, payload = payload)
-			
-		endTime = time.time_ns()
-		elapsedMillis = (endTime - startTime) / self.NS_IN_MILLIS
-		
-		print("\nPUT message - useCON = " + str(useCon) + " [" + str(maxTestRuns) + "]: " + str(elapsedMillis) + " ms. Payload Len: " + str(len(payload)))
-		
-		sleep(2)
-	
+
 if __name__ == "__main__":
 	unittest.main()
-	
