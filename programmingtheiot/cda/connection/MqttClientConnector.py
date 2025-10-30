@@ -12,6 +12,7 @@
 
 import logging
 import ssl
+import os
 import paho.mqtt.client as mqttClient
 
 import programmingtheiot.common.ConfigConst as ConfigConst
@@ -86,6 +87,9 @@ class MqttClientConnector(IPubSubClient):
 		logging.info('\tMQTT Broker Host: ' + self.host)
 		logging.info('\tMQTT Broker Port: ' + str(self.port))
 		logging.info('\tMQTT Keep Alive:  ' + str(self.keepAlive))
+		logging.info('\tMQTT Enable Encryption: ' + str(self.enableEncryption))
+		if self.enableEncryption:
+			logging.info('\tMQTT Certificate File: ' + str(self.pemFileName))
 
 	def connectClient(self) -> bool:
 		"""
@@ -106,15 +110,35 @@ class MqttClientConnector(IPubSubClient):
 						self.config.getInteger( \
 							ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.SECURE_PORT_KEY, ConfigConst.DEFAULT_MQTT_SECURE_PORT)
 					
-					# IMPORTANT NOTE: Check your Python version for the version
-					# of TLS supported in the `ssl` module. It may need to be
-					# changed from what is indicated below.
-					# 
-					# see https://docs.python.org/3/library/ssl.html for more options.
-					self.mqttClient.tls_set(self.pemFileName, tls_version = ssl.PROTOCOL_TLS_CLIENT)
-			except:
-				logging.warning("Failed to enable TLS encryption. Using unencrypted connection.")
-			
+					logging.info("TLS Secure Port: " + str(self.port))
+					logging.info("Certificate file: " + str(self.pemFileName))
+					
+					# Verify certificate file exists
+					if not os.path.exists(self.pemFileName):
+						logging.error("Certificate file NOT FOUND: " + self.pemFileName)
+						raise FileNotFoundError("Certificate file not found: " + self.pemFileName)
+					else:
+						logging.info("Certificate file found: " + self.pemFileName)
+					
+					try:
+						self.mqttClient.tls_set(
+							ca_certs=self.pemFileName, 
+							tls_version=ssl.PROTOCOL_TLS_CLIENT,
+							cert_reqs=ssl.CERT_REQUIRED
+						)
+						logging.info("TLS configuration successful")
+						self.mqttClient.tls_insecure_set(False)
+						logging.info("TLS certificate verification enabled")
+					except Exception as tls_error:
+						logging.error("TLS setup failed: " + str(tls_error))
+						raise tls_error
+						
+			except Exception as e:
+				logging.error("Failed to enable TLS encryption: " + str(e))
+				logging.warning("Attempting unencrypted connection on port 1883")
+				self.port = ConfigConst.DEFAULT_MQTT_PORT  # Fall back to 1883
+				self.enableEncryption = False
+		
 			# Set callback functions
 			self.mqttClient.on_connect = self.onConnect
 			self.mqttClient.on_disconnect = self.onDisconnect
@@ -123,14 +147,17 @@ class MqttClientConnector(IPubSubClient):
 			self.mqttClient.on_subscribe = self.onSubscribe
 		
 		if not self.mqttClient.is_connected():
-			logging.info('MQTT client connecting to broker at host: ' + self.host)
-			self.mqttClient.connect(self.host, self.port, self.keepAlive)
-			self.mqttClient.loop_start()
-			
-			return True
+			logging.info('MQTT client connecting to broker at host: ' + self.host + ':' + str(self.port))
+			try:
+				self.mqttClient.connect(self.host, self.port, self.keepAlive)
+				self.mqttClient.loop_start()
+				logging.info("MQTT connection attempt initiated")
+				return True
+			except Exception as conn_error:
+				logging.error("MQTT connection failed: " + str(conn_error))
+				return False
 		else:
 			logging.warning('MQTT client is already connected. Ignoring connect request.')
-			
 			return False
 		
 	def disconnectClient(self) -> bool:

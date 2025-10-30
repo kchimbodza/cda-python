@@ -23,7 +23,6 @@ from programmingtheiot.cda.connection.CoapClientConnector import CoapClientConne
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
 from programmingtheiot.data.SystemPerformanceData import SystemPerformanceData
-from programmingtheiot.data.DataUtil import DataUtil
 
 
 class DeviceDataManager(IDataMessageListener):
@@ -163,32 +162,6 @@ class DeviceDataManager(IDataMessageListener):
         if data:
             logging.info("Incoming sensor data received (from sensor manager): " + str(data))
             
-            # Publish sensor data to MQTT if enabled (PIOT-CDA-10-003)
-            if self.mqttClient:
-                try:
-                    dataUtil = DataUtil()
-                    payload = dataUtil.sensorDataToJson(data)
-                    
-                    # Determine which resource/topic based on sensor type
-                    if data.getTypeID() == ConfigConst.TEMP_SENSOR_TYPE:
-                        resource = ResourceNameEnum.CDA_TEMP_SENSOR_MSG_RESOURCE
-                    elif data.getTypeID() == ConfigConst.HUMIDITY_SENSOR_TYPE:
-                        resource = ResourceNameEnum.CDA_HUMIDITY_SENSOR_MSG_RESOURCE
-                    elif data.getTypeID() == ConfigConst.PRESSURE_SENSOR_TYPE:
-                        resource = ResourceNameEnum.CDA_PRESSURE_SENSOR_MSG_RESOURCE
-                    else:
-                        resource = ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE
-                    
-                    if self.mqttClient.publishMessage(
-                        resource=resource,
-                        msg=payload,
-                        qos=ConfigConst.DEFAULT_QOS):
-                        logging.info("Sent SensorData upstream to cloud service")
-                    else:
-                        logging.warning("Failed to publish sensor data to MQTT broker")
-                except Exception as e:
-                    logging.error("Failed to publish sensor data to MQTT: " + str(e))
-            
             # Analyze sensor data for threshold crossings
             self._handleSensorDataAnalysis(data)
             
@@ -212,22 +185,6 @@ class DeviceDataManager(IDataMessageListener):
         """
         if data:
             logging.debug("System performance data received.")
-            
-            # Publish system performance data to MQTT if enabled (PIOT-CDA-10-003)
-            if self.mqttClient:
-                try:
-                    dataUtil = DataUtil()
-                    payload = dataUtil.systemPerformanceDataToJson(data)
-                    
-                    if self.mqttClient.publishMessage(
-                        resource=ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE,
-                        msg=payload,
-                        qos=ConfigConst.DEFAULT_QOS):
-                        logging.info("Sent SystemPerformanceData upstream to cloud service")
-                    else:
-                        logging.warning("Failed to publish system performance data to MQTT broker")
-                except Exception as e:
-                    logging.error("Failed to publish system performance data to MQTT: " + str(e))
             
             # Update CoAP resource handler if enabled
             if self.coapServer:

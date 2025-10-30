@@ -6,9 +6,7 @@
 # 
 # Copyright (c) 2020 - 2025 by Andrew D. King
 # 
-
 from enum import Enum
-
 import programmingtheiot.common.ConfigConst as ConfigConst
 
 class ResourceNameEnum(Enum):
@@ -46,6 +44,9 @@ class ResourceNameEnum(Enum):
 	
 	"""
 	CDA_SENSOR_MSG_RESOURCE           = ConfigConst.CDA_SENSOR_DATA_MSG_RESOURCE
+	CDA_TEMP_SENSOR_MSG_RESOURCE      = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.TEMP_SENSOR_NAME
+	CDA_HUMIDITY_SENSOR_MSG_RESOURCE  = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.HUMIDITY_SENSOR_NAME
+	CDA_PRESSURE_SENSOR_MSG_RESOURCE  = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.PRESSURE_SENSOR_NAME
 	CDA_ACTUATOR_CMD_RESOURCE    	  = ConfigConst.CDA_ACTUATOR_CMD_MSG_RESOURCE
 	CDA_ACTUATOR_RESPONSE_RESOURCE    = ConfigConst.CDA_ACTUATOR_RESPONSE_MSG_RESOURCE
 	CDA_MGMT_STATUS_MSG_RESOURCE	  = ConfigConst.CDA_MGMT_STATUS_MSG_RESOURCE
@@ -53,7 +54,7 @@ class ResourceNameEnum(Enum):
 	CDA_SYSTEM_PERF_MSG_RESOURCE	  = ConfigConst.CDA_SYSTEM_PERF_MSG_RESOURCE
 	CDA_UPDATE_NOTIFICATIONS_RESOURCE = ConfigConst.CDA_UPDATE_NOTIFICATIONS_MSG_RESOURCE
 	CDA_REGISTRATION_REQUEST_RESOURCE = ConfigConst.CDA_REGISTRATION_REQUEST_RESOURCE
-
+	
 	def getResourceNameByValue(self, val: str) -> str:
 		"""
 		Looks up the resource enum by its value.
@@ -63,5 +64,3 @@ class ResourceNameEnum(Enum):
 		"""
 		if val in ResourceNameEnum.__members__:
 			return ResourceNameEnum.__members__[val]
-	
-			
