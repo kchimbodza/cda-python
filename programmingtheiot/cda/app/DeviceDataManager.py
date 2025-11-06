@@ -8,6 +8,7 @@
 # 
 
 import logging
+import threading
 
 import programmingtheiot.common.ConfigConst as ConfigConst
 from programmingtheiot.common.ConfigUtil import ConfigUtil
@@ -24,6 +25,7 @@ from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.data.SensorData import SensorData
 from programmingtheiot.data.SystemPerformanceData import SystemPerformanceData
 from programmingtheiot.data.DataUtil import DataUtil
+from pisense import SenseHAT
 
 
 class DeviceDataManager(IDataMessageListener):
@@ -40,6 +42,12 @@ class DeviceDataManager(IDataMessageListener):
         """
         self.configUtil = ConfigUtil()
         
+        # Get location ID from configuration
+        self.locationID = self.configUtil.getProperty(
+            section=ConfigConst.CONSTRAINED_DEVICE,
+            key=ConfigConst.DEVICE_LOCATION_ID_KEY,
+            defaultVal="constraineddevice001")
+        
         # Initialize all managers
         self.sysPerfMgr = SystemPerformanceManager()
         self.sysPerfMgr.setDataMessageListener(self)
@@ -49,6 +57,10 @@ class DeviceDataManager(IDataMessageListener):
         
         self.actuatorAdapterMgr = ActuatorAdapterManager()
         self.actuatorAdapterMgr.setDataMessageListener(self)
+        
+        # Initialize SenseHAT for joystick events (Lab 12)
+        self.sh = SenseHAT(emulate = True)
+        self._setupJoystickEvents()
         
         # MQTT Client Integration
         if disableAllComms:
@@ -124,14 +136,62 @@ class DeviceDataManager(IDataMessageListener):
     
     def handleActuatorCommandResponse(self, data: ActuatorData) -> bool:
         """
-        Handle actuator command response.
+        Handle actuator command response and forward LED data to GDA.
         
         @param data: The ActuatorData response message
         @return: True if processed successfully, False otherwise
         """
         if data:
             logging.debug("Actuator command response received.")
-            # TODO: Add upstream transmission logic in future chapters
+            
+            # Special handling for LED position data to forward to GDA
+            if data.getTypeID() == ConfigConst.LED_DISPLAY_ACTUATOR_TYPE:
+                stateData = data.getStateData()
+                
+                # Publish LED position to GDA via MQTT on dedicated LED position topic
+                if stateData and self.mqttClient:
+                    try:
+                        from programmingtheiot.data.DataUtil import DataUtil
+                        
+                        # Create ActuatorData for LED position with actual position values
+                        ledPositionData = ActuatorData(typeID=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE)
+                        ledPositionData.setCommand(ConfigConst.COMMAND_ON)
+                        ledPositionData.setLocationID(self.locationID)
+                        ledPositionData.setName(ConfigConst.LED_ACTUATOR_NAME)
+                        
+                        # Parse position from state data (format: "x=3,y=4,mode=manual")
+                        parts = stateData.split(',')
+                        positionDict = {}
+                        
+                        for part in parts:
+                            if '=' in part:
+                                key, val = part.split('=')
+                                positionDict[key.strip()] = val.strip()
+                        
+                        # Set LED position data
+                        x = int(positionDict.get('x', 4))
+                        y = int(positionDict.get('y', 4))
+                        mode = positionDict.get('mode', 'manual')
+                        
+                        ledPositionData.setValue(float(x))
+                        ledPositionData.setStateData(f"y={y},mode={mode}")
+                        
+                        # Convert to JSON and publish to LED position resource
+                        dataUtil = DataUtil()
+                        payload = dataUtil.actuatorDataToJson(ledPositionData)
+                        
+                        # Publish to dedicated LED position topic (PIOT-CDA-12-004)
+                        if self.mqttClient.publishMessage(
+                            resource=ResourceNameEnum.CDA_LED_POSITION_MSG_RESOURCE,
+                            msg=payload,
+                            qos=ConfigConst.DEFAULT_QOS):
+                            logging.info(f"Published LED position to GDA: x={x}, y={y}, mode={mode}")
+                        else:
+                            logging.warning("Failed to publish LED position to GDA")
+                    
+                    except Exception as e:
+                        logging.error(f"Error publishing LED position data: {str(e)}")
+            
             return True
         else:
             logging.warning("Invalid actuator command response.")
@@ -156,6 +216,7 @@ class DeviceDataManager(IDataMessageListener):
     def handleSensorMessage(self, data: SensorData) -> bool:
         """
         Handle incoming sensor data message.
+        Routes pitch data to LED actuator for tilt mode control.
         
         @param data: The SensorData message
         @return: True if processed successfully, False otherwise
@@ -176,6 +237,8 @@ class DeviceDataManager(IDataMessageListener):
                         resource = ResourceNameEnum.CDA_HUMIDITY_SENSOR_MSG_RESOURCE
                     elif data.getTypeID() == ConfigConst.PRESSURE_SENSOR_TYPE:
                         resource = ResourceNameEnum.CDA_PRESSURE_SENSOR_MSG_RESOURCE
+                    elif data.getTypeID() == ConfigConst.PITCH_SENSOR_TYPE:  
+                        resource = ResourceNameEnum.CDA_PITCH_SENSOR_MSG_RESOURCE
                     else:
                         resource = ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE
                     
@@ -188,6 +251,10 @@ class DeviceDataManager(IDataMessageListener):
                         logging.warning("Failed to publish sensor data to MQTT broker")
                 except Exception as e:
                     logging.error("Failed to publish sensor data to MQTT: " + str(e))
+            
+            # Route pitch sensor data to LED actuator for tilt mode control (Lab 12)
+            if data.getTypeID() == ConfigConst.PITCH_SENSOR_TYPE:
+                self._handlePitchDataForLED(data)
             
             # Analyze sensor data for threshold crossings
             self._handleSensorDataAnalysis(data)
@@ -310,6 +377,122 @@ class DeviceDataManager(IDataMessageListener):
             
             ad.setLocationID(data.getLocationID())
             self.handleActuatorCommandMessage(ad)
+    
+    def _handlePitchDataForLED(self, data: SensorData):
+        """
+        Route pitch sensor data to LED actuator for tilt mode control.
+        When in tilt mode, the pitch angle controls the Y position of the dot.
+        
+        @param data: The PitchSensor SensorData
+        """
+        if data and self.actuatorAdapterMgr:
+            pitch_value = data.getValue()
+            logging.debug("Routing pitch data (%.2f degrees) to LED actuator for tilt control", pitch_value)
+            
+            # Create actuator command with pitch value
+            actuatorData = ActuatorData(typeID=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE)
+            actuatorData.setCommand(ConfigConst.COMMAND_ON)
+            actuatorData.setValue(pitch_value)
+            actuatorData.setStateData(str(pitch_value))  # Pass pitch as state data
+            actuatorData.setLocationID(self.locationID)
+            actuatorData.setName("LED Display Pitch Control")
+            
+            # Send to actuator manager
+            # The LED actuator will only process this if in TILT mode
+            response = self.actuatorAdapterMgr.sendActuatorCommand(actuatorData)
+            
+            if response:
+                logging.debug("LED actuator processed pitch data for tilt control")
+            else:
+                logging.debug("LED actuator did not process pitch data (may be in manual mode)")
+    
+    def _setupJoystickEvents(self):
+        """
+        Setup joystick event handlers for LED actuator control.
+        Uses polling approach instead of callbacks.
+        """
+        logging.info("Setting up joystick event polling for LED control...")
+        
+        # Start a background thread to poll joystick events
+        self._joystickThread = threading.Thread(target=self._pollJoystickEvents, daemon=True)
+        self._joystickThread.start()
+    
+    def _pollJoystickEvents(self):
+        """
+        Continuously poll joystick for events.
+        Runs in background thread.
+        """
+        logging.info("Joystick polling thread started...")
+        
+        # Set stream mode so iterator doesn't block
+        self.sh.stick.stream = True
+        
+        for event in self.sh.stick:
+            if event and event.pressed and not event.held:
+                # Only process initial button presses, not holds or releases
+                if event.direction == 'left':
+                    self._handleLeftButton(event)
+                elif event.direction == 'right':
+                    self._handleRightButton(event)
+                elif event.direction == 'enter':
+                    self._handleMiddleButton(event)
+
+    def _handleMiddleButton(self, event):
+        """
+        Handle middle joystick button press to toggle LED control mode.
+        
+        @param event: Joystick event from SenseHAT (StickEvent)
+        """
+        logging.info("Middle button pressed - toggling LED control mode")
+        
+        # Create actuator command to toggle mode
+        actuatorData = ActuatorData(typeID=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE)
+        actuatorData.setCommand(ConfigConst.COMMAND_ON)
+        actuatorData.setStateData("toggle_mode")
+        actuatorData.setLocationID(self.locationID)
+        actuatorData.setName("LED Display Mode Toggle")
+        
+        # Send command to actuator manager
+        if self.actuatorAdapterMgr:
+            self.actuatorAdapterMgr.sendActuatorCommand(actuatorData)
+
+    def _handleLeftButton(self, event):
+        """
+        Handle left joystick button press to move dot left (manual mode).
+        
+        @param event: Joystick event from SenseHAT (StickEvent)
+        """
+        logging.info("Left button pressed - moving dot left")
+        
+        # Create actuator command to move left
+        actuatorData = ActuatorData(typeID=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE)
+        actuatorData.setCommand(ConfigConst.COMMAND_ON)
+        actuatorData.setStateData("left")
+        actuatorData.setLocationID(self.locationID)
+        actuatorData.setName("LED Display Move Left")
+        
+        # Send command to actuator manager
+        if self.actuatorAdapterMgr:
+            self.actuatorAdapterMgr.sendActuatorCommand(actuatorData)
+
+    def _handleRightButton(self, event):
+        """
+        Handle right joystick button press to move dot right (manual mode).
+        
+        @param event: Joystick event from SenseHAT (StickEvent)
+        """
+        logging.info("Right button pressed - moving dot right")
+        
+        # Create actuator command to move right
+        actuatorData = ActuatorData(typeID=ConfigConst.LED_DISPLAY_ACTUATOR_TYPE)
+        actuatorData.setCommand(ConfigConst.COMMAND_ON)
+        actuatorData.setStateData("right")
+        actuatorData.setLocationID(self.locationID)
+        actuatorData.setName("LED Display Move Right")
+        
+        # Send command to actuator manager
+        if self.actuatorAdapterMgr:
+            self.actuatorAdapterMgr.sendActuatorCommand(actuatorData)
     
     # Shell implementations for methods not needed in Chapter 3
     def getLatestActuatorDataResponseFromCache(self, name: str = None) -> ActuatorData:
