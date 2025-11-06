@@ -12,41 +12,13 @@ import programmingtheiot.common.ConfigConst as ConfigConst
 class ResourceNameEnum(Enum):
 	"""
 	Enum declaration for resource and topic names for the CDA and GDA.
-	
-	So, why don't we just use the string defined in ConfigConst?
-	
-	Option 1: (chosen - for now), this may not seem 'Pythonic',
-	but it's one way to enforce consistency in resource / topic naming.
-	It also limits the number of resource and topic names, which can
-	quickly grow out of hand if free reign is provided without any
-	semi-strict convention. Finally, it permits relatively straight
-	forward mapping to other languages that support Enum's
-	(such as Java [and the GDA]).
-	
-	Option 2: Delegate the resource generation to a separate class
-	that generates a resource name based on the typed parameters
-	passed into a given function. Similar to Option 1, but names
-	are dynamically, yet still consistently, generated.
-	
-	Option 3: Define resource name keys in ConfigConst,
-	and define the resource names within the configuration file.
-	I may change over to this model, as it allows for easier
-	debugging and on-the-fly changes. Similar to option 1, except
-	the resource names are easier to change whenever you'd like.
-	
-	Option 4: Simply rely on the string to be constructed properly
-	within each code module that has to publish / subscribe data to,
-	or request / response data from, a server-based resource.
-	In short, anything goes.
-	
-	For now, we'll stick with using Enum's. The name is captured within
-	ConfigConst, so it's still relatively easy to debug, IMO.
-	
 	"""
 	CDA_SENSOR_MSG_RESOURCE           = ConfigConst.CDA_SENSOR_DATA_MSG_RESOURCE
 	CDA_TEMP_SENSOR_MSG_RESOURCE      = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.TEMP_SENSOR_NAME
 	CDA_HUMIDITY_SENSOR_MSG_RESOURCE  = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.HUMIDITY_SENSOR_NAME
 	CDA_PRESSURE_SENSOR_MSG_RESOURCE  = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.PRESSURE_SENSOR_NAME
+	CDA_PITCH_SENSOR_MSG_RESOURCE     = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + ConfigConst.PITCH_SENSOR_NAME
+	CDA_LED_POSITION_MSG_RESOURCE     = ConfigConst.PRODUCT_NAME + '/' + ConfigConst.CONSTRAINED_DEVICE + '/' + 'LedPositionMsg'
 	CDA_ACTUATOR_CMD_RESOURCE    	  = ConfigConst.CDA_ACTUATOR_CMD_MSG_RESOURCE
 	CDA_ACTUATOR_RESPONSE_RESOURCE    = ConfigConst.CDA_ACTUATOR_RESPONSE_MSG_RESOURCE
 	CDA_MGMT_STATUS_MSG_RESOURCE	  = ConfigConst.CDA_MGMT_STATUS_MSG_RESOURCE

@@ -16,6 +16,7 @@ from programmingtheiot.common.IDataMessageListener import IDataMessageListener
 from programmingtheiot.data.ActuatorData import ActuatorData
 from programmingtheiot.cda.sim.HvacActuatorSimTask import HvacActuatorSimTask
 from programmingtheiot.cda.sim.HumidifierActuatorSimTask import HumidifierActuatorSimTask
+from programmingtheiot.cda.emulated.LEDDisplayActuator import LEDDisplayActuator
 
 from importlib import import_module
 
@@ -52,9 +53,12 @@ class ActuatorAdapterManager(object):
         if not self.useEmulator:
             # load the environmental tasks for simulated actuation
             self.humidifierActuator = HumidifierActuatorSimTask()
-            
-            # create the HVAC actuator
             self.hvacActuator = HvacActuatorSimTask()
+            
+            ledModule = import_module('programmingtheiot.cda.emulated.LEDDisplayActuator', 'LEDDisplayActuator')
+            ledClazz = getattr(ledModule, 'LEDDisplayActuator')
+            self.ledDisplayActuator = ledClazz()
+            
         else:
             hueModule = import_module('programmingtheiot.cda.emulated.HumidifierEmulatorTask', 'HumidiferEmulatorTask')
             hueClazz = getattr(hueModule, 'HumidifierEmulatorTask')
@@ -65,14 +69,17 @@ class ActuatorAdapterManager(object):
             hveClazz = getattr(hveModule, 'HvacEmulatorTask')
             self.hvacActuator = hveClazz()
             
-            # create the LED display actuator emulator
-            leDisplayModule = import_module('programmingtheiot.cda.emulated.LedDisplayEmulatorTask', 'LedDisplayEmulatorTask')
-            leClazz = getattr(leDisplayModule, 'LedDisplayEmulatorTask')
-            self.ledDisplayActuator = leClazz()
+            # create the LED display actuator for joystick control (Lab 12)
+            ledModule = import_module('programmingtheiot.cda.emulated.LEDDisplayActuator', 'LEDDisplayActuator')
+            ledClazz = getattr(ledModule, 'LEDDisplayActuator')
+            self.ledDisplayActuator = ledClazz()
     
     def sendActuatorCommand(self, data: ActuatorData) -> ActuatorData:
         """
         Send an actuator command to the appropriate actuator task.
+        
+        Routes LED display commands to use handleActuatorCommand() directly
+        to bypass repeat filtering for button press events.
         
         @param data: The ActuatorData containing the command to execute
         @return: ActuatorData response from the actuator, or None if command failed
@@ -92,8 +99,11 @@ class ActuatorAdapterManager(object):
                 elif aType == ConfigConst.HVAC_ACTUATOR_TYPE and self.hvacActuator:
                     responseData = self.hvacActuator.updateActuator(data)
                 
-                elif aType == ConfigConst.LED_DISPLAY_ACTUATOR_TYPE and self.useEmulator and self.ledDisplayActuator:
-                    responseData = self.ledDisplayActuator.updateActuator(data)
+                elif aType == ConfigConst.LED_DISPLAY_ACTUATOR_TYPE and self.ledDisplayActuator:
+                    # For LED display, call handleActuatorCommand directly to use
+                    # the overridden version in LEDDisplayActuator that bypasses
+                    # repeat detection for button press events
+                    responseData = self.ledDisplayActuator.handleActuatorCommand(data)
                 
                 else:
                     logging.warning('No valid actuator type: %s', data.getTypeID())
@@ -122,3 +132,13 @@ class ActuatorAdapterManager(object):
         """
         if listener:
             self.dataMsgListener = listener
+            
+            # Pass listener to all actuators (only if they support it)
+            if self.humidifierActuator and hasattr(self.humidifierActuator, 'setDataMessageListener'):
+                self.humidifierActuator.setDataMessageListener(listener)
+            
+            if self.hvacActuator and hasattr(self.hvacActuator, 'setDataMessageListener'):
+                self.hvacActuator.setDataMessageListener(listener)
+            
+            if self.ledDisplayActuator and hasattr(self.ledDisplayActuator, 'setDataMessageListener'):
+                self.ledDisplayActuator.setDataMessageListener(listener)

@@ -102,6 +102,7 @@ class SensorAdapterManager(object):
             self.humidityAdapter = HumiditySensorSimTask(dataSet = humidityData)
             self.pressureAdapter = PressureSensorSimTask(dataSet = pressureData)
             self.tempAdapter     = TemperatureSensorSimTask(dataSet = tempData)
+            self.pitchAdapter    = None
             
             logging.info("Loaded sensor simulator tasks")
         else:
@@ -117,6 +118,10 @@ class SensorAdapterManager(object):
             teClazz = getattr(teModule, 'TemperatureSensorEmulatorTask')
             self.tempAdapter = teClazz()
             
+            pitchModule = import_module('programmingtheiot.cda.emulated.PitchSensorEmulatorTask', 'PitchSensorEmulatorTask')
+            pitchClazz = getattr(pitchModule, 'PitchSensorEmulatorTask')
+            self.pitchAdapter = pitchClazz()
+            
             logging.info("Loaded sensor emulator tasks")
     
     def handleTelemetry(self):
@@ -127,24 +132,38 @@ class SensorAdapterManager(object):
         humidityData = self.humidityAdapter.generateTelemetry()
         pressureData = self.pressureAdapter.generateTelemetry()
         tempData = self.tempAdapter.generateTelemetry()
+        pitchData = None
+        if self.pitchAdapter:
+            pitchData = self.pitchAdapter.generateTelemetry()
+        
+        """ Round values to 1 decimal place """ 
+        humidityData.setValue(round(humidityData.getValue(), 1))
+        pressureData.setValue(round(pressureData.getValue(), 1))
+        tempData.setValue(round(tempData.getValue(), 1))
         
         humidityData.setLocationID(self.locationID)
         pressureData.setLocationID(self.locationID)
         tempData.setLocationID(self.locationID)
+        if pitchData:
+            pitchData.setLocationID(self.locationID)
         
         if self.useEmulator:
             logging.debug('Generated humidity data: ' + str(humidityData.getValue()))
             logging.debug('Generated pressure data: ' + str(pressureData.getValue()))
-            logging.debug('Generated temp data: ' + str(tempData.getValue()))
+            logging.debug('Generated temperature data: ' + str(tempData.getValue()))
+            if pitchData:
+                logging.debug('Generated pitch data: ' + str(pitchData.getValue()))
         else:
             logging.debug('Generated humidity data: ' + str(humidityData.getValue()))
             logging.debug('Generated pressure data: ' + str(pressureData.getValue()))
-            logging.debug('Generated temp data: ' + str(tempData.getValue()))
+            logging.debug('Generated temperature data: ' + str(tempData.getValue()))
         
         if self.dataMsgListener:
             self.dataMsgListener.handleSensorMessage(humidityData)
             self.dataMsgListener.handleSensorMessage(pressureData)
             self.dataMsgListener.handleSensorMessage(tempData)
+            if pitchData:
+                self.dataMsgListener.handleSensorMessage(pitchData)
     
     def setDataMessageListener(self, listener: IDataMessageListener):
         """
